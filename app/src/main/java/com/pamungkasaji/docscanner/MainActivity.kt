@@ -13,6 +13,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_JPEG
@@ -106,7 +108,8 @@ class MainActivity : ComponentActivity() {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp)
+                            // .padding(16.dp)
+                            .padding(start = 16.dp, end = 16.dp, top = 80.dp)
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -131,7 +134,8 @@ class MainActivity : ComponentActivity() {
                         )
 
                         // Gender radio
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+//                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Jenis Kelamin:")
                             GenderRadio("laki-laki", gender) { gender = it }
                             GenderRadio("perempuan", gender) { gender = it }
@@ -178,6 +182,27 @@ class MainActivity : ComponentActivity() {
                             },
                             enabled = !sending
                         ) { Text(if (sending) "Mengunggah..." else "Scan & Upload") }
+
+                        if (sending) {
+                            Dialog(onDismissRequest = { /* no-op while uploading */ }) {
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    tonalElevation = 8.dp
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(72.dp),
+                                            strokeWidth = 6.dp
+                                        )
+                                        Text("Mengunggah...", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
