@@ -38,6 +38,7 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
 
@@ -45,7 +46,18 @@ class MainActivity : ComponentActivity() {
         private const val WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwEgSebaZkgF_NCzX0STe1zdagA5vBcpjjvqjBTZsG-4kMybTt4o4PshkkQjEszgmn87w/exec"
     }
 
-    private val http by lazy { OkHttpClient() }
+//    private val http by lazy { OkHttpClient() }
+
+    // replace your http client definition with this (or add if you don't have it here)
+    private val http by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .writeTimeout(5, TimeUnit.MINUTES)
+            .callTimeout(6, TimeUnit.MINUTES)   // total budget per call
+            .retryOnConnectionFailure(true)
+            .build()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -242,7 +254,8 @@ class MainActivity : ComponentActivity() {
                 }
                 val body = payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
                 val req = Request.Builder().url(WEB_APP_URL).post(body).build()
-                OkHttpClient().newCall(req).execute().use { resp ->
+//                OkHttpClient().newCall(req).execute().use { resp ->
+                http.newCall(req).execute().use { resp ->
                     val ok = resp.isSuccessful
                     val msg = if (ok) "Terkirim: ${file.name}" else "Gagal ${resp.code}: ${resp.body?.string() ?: ""}"
                     runOnUiThread {
