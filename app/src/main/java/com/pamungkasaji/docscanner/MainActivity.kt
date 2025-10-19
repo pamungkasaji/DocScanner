@@ -120,7 +120,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
                         "Pencarian Data Siswa",
@@ -128,78 +128,93 @@ class MainActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Row(
+                    // Nomor Induk Field
+                    OutlinedTextField(
+                        value = nomorInduk,
+                        onValueChange = {
+                            if (it.matches(Regex("[A-Za-z0-9]*"))) {
+                                nomorInduk = it
+                                // Reset form when nomor induk changes
+                                if (searchPerformed) {
+                                    searchPerformed = false
+                                    studentFound = false
+                                    nisn = ""
+                                    studentName = ""
+                                    gender = "laki-laki"
+                                    dob = ""
+                                    bukuIndukFile = null
+                                    ijazahFile = null
+                                    existingBukuIndukUrl = ""
+                                    existingIjazahUrl = ""
+                                }
+                            }
+                        },
+                        label = { Text("Nomor Induk") },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = nomorInduk,
-                            onValueChange = {
-                                if (it.matches(Regex("[A-Za-z0-9]*"))) {
-                                    nomorInduk = it
-                                    // Reset form when nomor induk changes
-                                    if (searchPerformed) {
-                                        searchPerformed = false
-                                        studentFound = false
-                                        nisn = ""
-                                        studentName = ""
-                                        gender = "laki-laki"
-                                        dob = ""
-                                        bukuIndukFile = null
-                                        ijazahFile = null
-                                    }
-                                }
-                            },
-                            label = { Text("Nomor Induk") },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isSearching,
-                            placeholder = { Text("Masukkan nomor induk siswa") }
-                        )
-                        Button(
-                            onClick = {
-                                if (nomorInduk.isBlank()) {
-                                    Toast.makeText(context, "Masukkan nomor induk", Toast.LENGTH_SHORT).show()
-                                    return@Button
-                                }
-                                ioScope.launch {
-                                    searchStudent(
-                                        nomorInduk = nomorInduk,
-                                        onSearching = { isSearching = true },
-                                        onFound = { student ->
-                                            launch(Dispatchers.Main) {
-                                                studentFound = true
-                                                searchPerformed = true
-                                                nisn = student.optString("nisn", "")
-                                                studentName = student.optString("student_name", "")
-                                                gender = student.optString("gender", "laki-laki")
-                                                dob = student.optString("dob", "")
-                                                existingBukuIndukUrl = student.optString("buku_induk_url", "")
-                                                existingIjazahUrl = student.optString("ijazah_url", "")
-                                                Toast.makeText(context, "Data siswa ditemukan", Toast.LENGTH_LONG).show()
-                                                isSearching = false
-                                            }
-                                        },
-                                        onNotFound = {
-                                            launch(Dispatchers.Main) {
-                                                studentFound = false
-                                                searchPerformed = true
-                                                // Changed from dialog to toast
-                                                Toast.makeText(context, "Data tidak ditemukan, silakan isi manual", Toast.LENGTH_LONG).show()
-                                                isSearching = false
-                                            }
-                                        },
-                                        onError = { error ->
-                                            launch(Dispatchers.Main) {
-                                                Toast.makeText(context, "Error: $error", Toast.LENGTH_LONG).show()
-                                                isSearching = false
-                                            }
+                        enabled = !isSearching,
+                        placeholder = { Text("Masukkan nomor induk siswa") }
+                    )
+
+                    // Cari Button - Full width below the field
+                    Button(
+                        onClick = {
+                            if (nomorInduk.isBlank()) {
+                                Toast.makeText(context, "Masukkan nomor induk", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            ioScope.launch {
+                                searchStudent(
+                                    nomorInduk = nomorInduk,
+                                    onSearching = { isSearching = true },
+                                    onFound = { student ->
+                                        launch(Dispatchers.Main) {
+                                            studentFound = true
+                                            searchPerformed = true
+                                            nisn = student.optString("nisn", "")
+                                            studentName = student.optString("student_name", "")
+                                            gender = student.optString("gender", "laki-laki")
+                                            dob = student.optString("dob", "")
+
+                                            // Store existing file URLs
+                                            existingBukuIndukUrl = student.optString("buku_induk_url", "")
+                                            existingIjazahUrl = student.optString("ijazah_url", "")
+
+                                            Toast.makeText(context, "Data siswa ditemukan", Toast.LENGTH_LONG).show()
+                                            isSearching = false
                                         }
-                                    )
-                                }
-                            },
-                            enabled = !isSearching && nomorInduk.isNotBlank()
-                        ) {
-                            Text(if (isSearching) "..." else "Cari")
+                                    },
+                                    onNotFound = {
+                                        launch(Dispatchers.Main) {
+                                            studentFound = false
+                                            searchPerformed = true
+                                            Toast.makeText(context, "Data tidak ditemukan, silakan isi manual", Toast.LENGTH_LONG).show()
+                                            isSearching = false
+                                        }
+                                    },
+                                    onError = { error ->
+                                        launch(Dispatchers.Main) {
+                                            Toast.makeText(context, "Error: $error", Toast.LENGTH_LONG).show()
+                                            isSearching = false
+                                        }
+                                    }
+                                )
+                            }
+                        },
+                        enabled = !isSearching && nomorInduk.isNotBlank(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        if (isSearching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Mencari...")
+                        } else {
+                            Text("Cari Data Siswa")
                         }
                     }
                 }
