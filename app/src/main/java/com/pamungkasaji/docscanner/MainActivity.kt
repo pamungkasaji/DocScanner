@@ -100,6 +100,9 @@ class MainActivity : ComponentActivity() {
         var showBukuIndukPreview by remember { mutableStateOf(false) }
         var showIjazahPreview by remember { mutableStateOf(false) }
 
+        var existingBukuIndukUrl by remember { mutableStateOf("") }
+        var existingIjazahUrl by remember { mutableStateOf("") }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -170,6 +173,8 @@ class MainActivity : ComponentActivity() {
                                                 studentName = student.optString("student_name", "")
                                                 gender = student.optString("gender", "laki-laki")
                                                 dob = student.optString("dob", "")
+                                                existingBukuIndukUrl = student.optString("buku_induk_url", "")
+                                                existingIjazahUrl = student.optString("ijazah_url", "")
                                                 Toast.makeText(context, "Data siswa ditemukan", Toast.LENGTH_LONG).show()
                                                 isSearching = false
                                             }
@@ -216,6 +221,8 @@ class MainActivity : ComponentActivity() {
                     onBukuIndukFileChange = { bukuIndukFile = it },
                     ijazahFile = ijazahFile,
                     onIjazahFileChange = { ijazahFile = it },
+                    existingBukuIndukUrl = existingBukuIndukUrl, // Pass existing URLs
+                    existingIjazahUrl = existingIjazahUrl,
                     showBukuIndukPreview = showBukuIndukPreview,
                     onBukuIndukPreviewClick = { showBukuIndukPreview = true },
                     onBukuIndukPreviewDismiss = { showBukuIndukPreview = false },
@@ -343,6 +350,8 @@ class MainActivity : ComponentActivity() {
         onBukuIndukFileChange: (File?) -> Unit,
         ijazahFile: File?,
         onIjazahFileChange: (File?) -> Unit,
+        existingBukuIndukUrl: String, // Add these parameters
+        existingIjazahUrl: String,
         showBukuIndukPreview: Boolean,
         onBukuIndukPreviewClick: () -> Unit,
         onBukuIndukPreviewDismiss: () -> Unit,
@@ -448,6 +457,7 @@ class MainActivity : ComponentActivity() {
                     ScanSection(
                         title = "Scan Buku Induk",
                         file = bukuIndukFile,
+                        existingFileUrl = existingBukuIndukUrl, // Pass existing URL
                         onFileScanned = onBukuIndukFileChange,
                         showPreview = showBukuIndukPreview,
                         onPreviewClick = onBukuIndukPreviewClick,
@@ -459,6 +469,7 @@ class MainActivity : ComponentActivity() {
                     ScanSection(
                         title = "Scan Ijazah",
                         file = ijazahFile,
+                        existingFileUrl = existingIjazahUrl, // Pass existing URL
                         onFileScanned = onIjazahFileChange,
                         showPreview = showIjazahPreview,
                         onPreviewClick = onIjazahPreviewClick,
@@ -532,6 +543,7 @@ class MainActivity : ComponentActivity() {
     fun ScanSection(
         title: String,
         file: File?,
+        existingFileUrl: String, // Add this parameter
         onFileScanned: (File?) -> Unit,
         showPreview: Boolean,
         onPreviewClick: () -> Unit,
@@ -570,6 +582,40 @@ class MainActivity : ComponentActivity() {
             ActivityResultContracts.StartActivityForResult()
         ) { /* We don't need to handle the result */ }
 
+        // Function to open PDF
+        fun openPdf(pdfFile: File?) {
+            if (pdfFile != null && pdfFile.exists()) {
+                // Open local file
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.provider",
+                    pdfFile
+                )
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/pdf")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                }
+                try {
+                    pdfViewLauncher.launch(intent)
+                } catch (e: ActivityNotFoundException) {
+                    Toast.makeText(context, "Tidak ada aplikasi untuk membuka PDF", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        // Function to open URL
+        fun openUrl(url: String) {
+            if (url.isNotBlank()) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                try {
+                    context.startActivity(intent)
+                } catch (e: ActivityNotFoundException) {
+                    Toast.makeText(context, "Tidak ada aplikasi untuk membuka link", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -580,75 +626,98 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (file != null) {
-                    Button(
-                        onClick = {
-                            // Open PDF with built-in viewer using FileProvider for security
-                            val uri = FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.provider",
-                                file
+                when {
+                    file != null -> {
+                        // Local scanned file exists
+                        Button(
+                            onClick = { openPdf(file) },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, "application/pdf")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
-                            }
-
-                            // Try to open with built-in viewer, fallback to any PDF viewer
-                            try {
-                                pdfViewLauncher.launch(intent)
-                            } catch (e: ActivityNotFoundException) {
-                                Toast.makeText(context, "Tidak ada aplikasi untuk membuka PDF", Toast.LENGTH_LONG).show()
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    ) {
-                        Text("Lihat PDF")
+                        ) {
+                            Text("Lihat PDF")
+                        }
+                        Button(
+                            onClick = {
+                                onScanAgain()
+                                GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
+                                    .addOnSuccessListener { intent ->
+                                        scannerLauncher.launch(IntentSenderRequest.Builder(intent).build())
+                                    }
+                                    .addOnFailureListener { err ->
+                                        Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
+                                    }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Scan Ulang")
+                        }
                     }
-                    Button(
-                        onClick = {
-                            onScanAgain()
-                            GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
-                                .addOnSuccessListener { intent ->
-                                    scannerLauncher.launch(IntentSenderRequest.Builder(intent).build())
-                                }
-                                .addOnFailureListener { err ->
-                                    Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
-                                }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Scan Ulang")
+                    existingFileUrl.isNotBlank() -> {
+                        // Existing file URL from backend exists
+                        Button(
+                            onClick = { openUrl(existingFileUrl) },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        ) {
+                            Text("Lihat File")
+                        }
+                        Button(
+                            onClick = {
+                                GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
+                                    .addOnSuccessListener { intent ->
+                                        scannerLauncher.launch(IntentSenderRequest.Builder(intent).build())
+                                    }
+                                    .addOnFailureListener { err ->
+                                        Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
+                                    }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Scan Ulang")
+                        }
                     }
-                } else {
-                    Button(
-                        onClick = {
-                            GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
-                                .addOnSuccessListener { intent ->
-                                    scannerLauncher.launch(IntentSenderRequest.Builder(intent).build())
-                                }
-                                .addOnFailureListener { err ->
-                                    Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
-                                }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Scan $title")
+                    else -> {
+                        // No file exists
+                        Button(
+                            onClick = {
+                                GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
+                                    .addOnSuccessListener { intent ->
+                                        scannerLauncher.launch(IntentSenderRequest.Builder(intent).build())
+                                    }
+                                    .addOnFailureListener { err ->
+                                        Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
+                                    }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Scan $title")
+                        }
                     }
                 }
             }
 
-            if (file != null) {
-                Text(
-                    "File: ${file.name} (${file.length() / 1024} KB)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // File info display
+            when {
+                file != null -> {
+                    Text(
+                        "File baru: ${file.name} (${file.length() / 1024} KB)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                existingFileUrl.isNotBlank() -> {
+                    Text(
+                        "File sudah ada di sistem",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
