@@ -268,15 +268,13 @@ class MainActivity : ComponentActivity() {
                                 onSuccess = {
                                     launch(Dispatchers.Main) {
                                         Toast.makeText(context, "Data berhasil disimpan", Toast.LENGTH_LONG).show()
-                                        // Reset form
-                                        if (!studentFound) {
-                                            nomorInduk = ""
-                                            nisn = ""
-                                            studentName = ""
-                                            gender = "laki-laki"
-                                            dob = ""
-                                            searchPerformed = false
-                                        }
+                                        // Reset form completely - always clear nomorInduk and go back to initial state
+                                        nomorInduk = ""
+                                        nisn = ""
+                                        studentName = ""
+                                        gender = "laki-laki"
+                                        dob = ""
+                                        searchPerformed = false
                                         bukuIndukFile = null
                                         ijazahFile = null
                                         studentFound = false
