@@ -251,6 +251,7 @@ class MainActivity : ComponentActivity() {
             if (searchPerformed) {
                 StudentDataSection(
                     studentFound = studentFound,
+                    nomorInduk = nomorInduk,
                     nisn = nisn,
                     onNisnChange = { if (it.matches(Regex("[A-Za-z0-9]*"))) nisn = it },
                     studentName = studentName,
@@ -399,6 +400,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun StudentDataSection(
         studentFound: Boolean,
+        nomorInduk: String,
         nisn: String,
         onNisnChange: (String) -> Unit,
         studentName: String,
@@ -611,7 +613,8 @@ class MainActivity : ComponentActivity() {
                         onPreviewClick = onBukuIndukPreviewClick,
                         onPreviewDismiss = onBukuIndukPreviewDismiss,
                         onScanAgain = { onBukuIndukFileChange(null) },
-                        context = context
+                        context = context,
+                        nomorInduk = nomorInduk
                     )
 
                     ScanSection(
@@ -623,7 +626,8 @@ class MainActivity : ComponentActivity() {
                         onPreviewClick = onIjazahPreviewClick,
                         onPreviewDismiss = onIjazahPreviewDismiss,
                         onScanAgain = { onIjazahFileChange(null) },
-                        context = context
+                        context = context,
+                        nomorInduk = nomorInduk
                     )
                 }
 
@@ -696,7 +700,8 @@ class MainActivity : ComponentActivity() {
         onPreviewClick: () -> Unit,
         onPreviewDismiss: () -> Unit,
         onScanAgain: () -> Unit,
-        context: android.content.Context
+        context: android.content.Context,
+        nomorInduk: String
     ) {
         val activity = context as ComponentActivity
         val options = remember {
@@ -713,10 +718,17 @@ class MainActivity : ComponentActivity() {
             ActivityResultContracts.GetContent()
         ) { uri ->
             if (uri != null) {
-                // Handle the selected PDF file
                 try {
-                    val safeName = title.lowercase().replace(" ", "_")
-                    val outFile = File(context.filesDir, "${safeName}_${System.currentTimeMillis()}.pdf")
+                    val fileType = when (title) {
+                        "Scan Buku Induk" -> "buku_induk"
+                        "Scan Ijazah" -> "ijazah"
+                        else -> title.lowercase().replace(" ", "_")
+                    }
+                    val timestamp = System.currentTimeMillis()
+                    val randomSuffix = (1000..9999).random() // 4-digit random number
+                    val fileName = "${nomorInduk}_${fileType}_${timestamp}_${randomSuffix}.pdf"
+
+                    val outFile = File(context.filesDir, fileName)
 
                     context.contentResolver.openInputStream(uri)?.use { input ->
                         FileOutputStream(outFile).use { fos ->
@@ -728,7 +740,8 @@ class MainActivity : ComponentActivity() {
                     Toast.makeText(context, "PDF berhasil diupload", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Log.e("MainActivity", "Error uploading PDF", e)
-                    Toast.makeText(context, "Error uploading PDF: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Error uploading PDF: ${e.message}", Toast.LENGTH_LONG)
+                        .show()
                 }
             }
         }
@@ -739,8 +752,16 @@ class MainActivity : ComponentActivity() {
             if (res.resultCode == RESULT_OK) {
                 val result = GmsDocumentScanningResult.fromActivityResultIntent(res.data)
                 result?.pdf?.let { pdf ->
-                    val safeName = title.lowercase().replace(" ", "_")
-                    val outFile = File(context.filesDir, "${safeName}_${System.currentTimeMillis()}.pdf")
+                    val fileType = when (title) {
+                        "Scan Buku Induk" -> "buku_induk"
+                        "Scan Ijazah" -> "ijazah"
+                        else -> title.lowercase().replace(" ", "_")
+                    }
+                    val timestamp = System.currentTimeMillis()
+                    val randomSuffix = (1000..9999).random() // 4-digit random number
+                    val fileName = "${nomorInduk}_${fileType}_${timestamp}_${randomSuffix}.pdf"
+
+                    val outFile = File(context.filesDir, fileName)
                     context.contentResolver.openInputStream(pdf.uri)?.use { input ->
                         FileOutputStream(outFile).use { fos -> input.copyTo(fos) }
                     }
@@ -866,7 +887,7 @@ class MainActivity : ComponentActivity() {
                                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                         ) {
-                            Text("Lihat File Server")
+                            Text("Lihat File Tersimpan")
                         }
 
                         // Action buttons row
