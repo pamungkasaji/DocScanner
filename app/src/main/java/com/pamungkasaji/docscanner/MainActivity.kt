@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
@@ -707,6 +708,31 @@ class MainActivity : ComponentActivity() {
                 .build()
         }
 
+        // PDF file picker launcher
+        val pdfPickerLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.GetContent()
+        ) { uri ->
+            if (uri != null) {
+                // Handle the selected PDF file
+                try {
+                    val safeName = title.lowercase().replace(" ", "_")
+                    val outFile = File(context.filesDir, "${safeName}_${System.currentTimeMillis()}.pdf")
+
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(outFile).use { fos ->
+                            input.copyTo(fos)
+                        }
+                    }
+
+                    onFileScanned(outFile)
+                    Toast.makeText(context, "PDF berhasil diupload", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Error uploading PDF", e)
+                    Toast.makeText(context, "Error uploading PDF: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
         val scannerLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.StartIntentSenderForResult()
         ) { res ->
@@ -767,49 +793,126 @@ class MainActivity : ComponentActivity() {
         ) {
             Text(title, style = MaterialTheme.typography.titleSmall)
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                when {
-                    file != null -> {
+            // Main action buttons - arranged in rows for better layout
+            when {
+                file != null -> {
+                    // Local scanned/uploaded file exists
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // View PDF button - full width
                         Button(
                             onClick = { openPdf(file) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         ) {
+                            Icon(Icons.Outlined.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text("Lihat PDF")
                         }
-                        Button(
-                            onClick = {
-                                onScanAgain()
-                                GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
-                                    .addOnSuccessListener { intent ->
-                                        scannerLauncher.launch(IntentSenderRequest.Builder(intent).build())
-                                    }
-                                    .addOnFailureListener { err ->
-                                        Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
-                                    }
-                            },
-                            modifier = Modifier.weight(1f)
+
+                        // Action buttons row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Scan Ulang")
+                            // Scan Again button
+                            Button(
+                                onClick = {
+                                    onScanAgain()
+                                    GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
+                                        .addOnSuccessListener { intent ->
+                                            scannerLauncher.launch(IntentSenderRequest.Builder(intent).build())
+                                        }
+                                        .addOnFailureListener { err ->
+                                            Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
+                                        }
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Text("Scan Ulang")
+                            }
+
+                            // Upload New button
+                            Button(
+                                onClick = {
+                                    pdfPickerLauncher.launch("application/pdf")
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Upload Baru")
+                            }
                         }
                     }
-                    existingFileUrl.isNotBlank() -> {
+                }
+                existingFileUrl.isNotBlank() -> {
+                    // Existing file URL from backend exists
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // View File button - full width
                         Button(
                             onClick = { openUrl(existingFileUrl) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                         ) {
-                            Text("Lihat File")
+                            Text("Lihat File Server")
                         }
+
+                        // Action buttons row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Scan button
+                            Button(
+                                onClick = {
+                                    GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
+                                        .addOnSuccessListener { intent ->
+                                            scannerLauncher.launch(IntentSenderRequest.Builder(intent).build())
+                                        }
+                                        .addOnFailureListener { err ->
+                                            Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
+                                        }
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Text("Scan")
+                            }
+
+                            // Upload button
+                            Button(
+                                onClick = {
+                                    pdfPickerLauncher.launch("application/pdf")
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Upload")
+                            }
+                        }
+                    }
+                }
+                else -> {
+                    // No file exists - show both scan and upload options
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Scan button
                         Button(
                             onClick = {
                                 GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
@@ -819,26 +922,24 @@ class MainActivity : ComponentActivity() {
                                     .addOnFailureListener { err ->
                                         Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
                                     }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        ) {
+                            Text("Scan Baru")
+                        }
+
+                        // Upload button
+                        Button(
+                            onClick = {
+                                pdfPickerLauncher.launch("application/pdf")
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Scan Ulang")
-                        }
-                    }
-                    else -> {
-                        Button(
-                            onClick = {
-                                GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
-                                    .addOnSuccessListener { intent ->
-                                        scannerLauncher.launch(IntentSenderRequest.Builder(intent).build())
-                                    }
-                                    .addOnFailureListener { err ->
-                                        Toast.makeText(context, err.message, Toast.LENGTH_LONG).show()
-                                    }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Scan $title")
+                            Text("Upload")
                         }
                     }
                 }
@@ -856,6 +957,13 @@ class MainActivity : ComponentActivity() {
                 existingFileUrl.isNotBlank() -> {
                     Text(
                         "File sudah ada di sistem",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                else -> {
+                    Text(
+                        "Pilih Scan atau Upload PDF",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
