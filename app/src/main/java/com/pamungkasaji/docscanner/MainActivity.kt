@@ -26,10 +26,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_JPEG
@@ -54,7 +57,12 @@ import java.util.concurrent.TimeUnit
 class MainActivity : ComponentActivity() {
 
     companion object {
-        private const val WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwEgSebaZkgF_NCzX0STe1zdagA5vBcpjjvqjBTZsG-4kMybTt4o4PshkkQjEszgmn87w/exec"
+        private const val WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx05fSqq0nYjzliHXMBgl_ezybDMuPXaY1rWEeyUU2J1dSl7ShlmSo-ywlHfOM4BjQG/exec"
+
+//        private const val WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwip7GYHpbn4bjV5Gi8jEY88vw-VA1az-Ie0_q6qUnx1dBSz0MJkx7nvCwr0mcyKPad/exec"
+
+        // old, akun pribadi
+//        private const val WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwEgSebaZkgF_NCzX0STe1zdagA5vBcpjjvqjBTZsG-4kMybTt4o4PshkkQjEszgmn87w/exec"
     }
 
     private val http by lazy {
@@ -89,6 +97,9 @@ class MainActivity : ComponentActivity() {
         var studentName by remember { mutableStateOf("") }
         var gender by remember { mutableStateOf("laki-laki") }
         var dob by remember { mutableStateOf("") }
+        var agama by remember { mutableStateOf("") }
+        var namaOrangTua by remember { mutableStateOf("") }
+        var alamatSiswa by remember { mutableStateOf("") }
 
         var isSearching by remember { mutableStateOf(false) }
         var isSaving by remember { mutableStateOf(false) }
@@ -142,6 +153,9 @@ class MainActivity : ComponentActivity() {
                                     studentName = ""
                                     gender = "laki-laki"
                                     dob = ""
+                                    agama = ""
+                                    namaOrangTua = ""
+                                    alamatSiswa = ""
                                     bukuIndukFile = null
                                     ijazahFile = null
                                     existingBukuIndukUrl = ""
@@ -149,7 +163,16 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         },
-                        label = { Text("Nomor Induk") },
+                        label = {
+                            Text(
+                                buildAnnotatedString {
+                                    append("Nomor Induk")
+                                    withStyle(style = SpanStyle(color = Color.Red)) {
+                                        append(" *")
+                                    }
+                                }
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isSearching,
                         placeholder = { Text("Masukkan nomor induk siswa") }
@@ -174,6 +197,9 @@ class MainActivity : ComponentActivity() {
                                             studentName = student.optString("student_name", "")
                                             gender = student.optString("gender", "laki-laki")
                                             dob = student.optString("dob", "")
+                                            agama = student.optString("agama", "")
+                                            namaOrangTua = student.optString("nama_orang_tua", "")
+                                            alamatSiswa = student.optString("alamat_siswa", "")
 
                                             // Store existing file URLs
                                             existingBukuIndukUrl = student.optString("buku_induk_url", "")
@@ -232,11 +258,17 @@ class MainActivity : ComponentActivity() {
                     onGenderChange = { gender = it },
                     dob = dob,
                     onDobChange = { dob = it },
+                    agama = agama,
+                    onAgamaChange = { agama = it },
+                    namaOrangTua = namaOrangTua,
+                    onNamaOrangTuaChange = { namaOrangTua = it },
+                    alamatSiswa = alamatSiswa,
+                    onAlamatSiswaChange = { alamatSiswa = it },
                     bukuIndukFile = bukuIndukFile,
                     onBukuIndukFileChange = { bukuIndukFile = it },
                     ijazahFile = ijazahFile,
                     onIjazahFileChange = { ijazahFile = it },
-                    existingBukuIndukUrl = existingBukuIndukUrl, // Pass existing URLs
+                    existingBukuIndukUrl = existingBukuIndukUrl,
                     existingIjazahUrl = existingIjazahUrl,
                     showBukuIndukPreview = showBukuIndukPreview,
                     onBukuIndukPreviewClick = { showBukuIndukPreview = true },
@@ -249,8 +281,16 @@ class MainActivity : ComponentActivity() {
                             Toast.makeText(context, "Nomor induk wajib diisi", Toast.LENGTH_LONG).show()
                             return@StudentDataSection
                         }
-                        if (!studentFound && (studentName.isBlank() || dob.isBlank())) {
-                            Toast.makeText(context, "Lengkapi data wajib", Toast.LENGTH_LONG).show()
+                        if (!studentFound && studentName.isBlank()) {
+                            Toast.makeText(context, "Nama siswa wajib diisi", Toast.LENGTH_LONG).show()
+                            return@StudentDataSection
+                        }
+                        if (!studentFound && dob.isBlank()) {
+                            Toast.makeText(context, "Tanggal lahir wajib diisi", Toast.LENGTH_LONG).show()
+                            return@StudentDataSection
+                        }
+                        if (!studentFound && gender.isBlank()) {
+                            Toast.makeText(context, "Jenis kelamin wajib diisi", Toast.LENGTH_LONG).show()
                             return@StudentDataSection
                         }
 
@@ -261,6 +301,9 @@ class MainActivity : ComponentActivity() {
                                 studentName = studentName,
                                 gender = gender,
                                 dob = dob,
+                                agama = agama,
+                                namaOrangTua = namaOrangTua,
+                                alamatSiswa = alamatSiswa,
                                 bukuIndukFile = bukuIndukFile,
                                 ijazahFile = ijazahFile,
                                 studentFound = studentFound,
@@ -268,12 +311,15 @@ class MainActivity : ComponentActivity() {
                                 onSuccess = {
                                     launch(Dispatchers.Main) {
                                         Toast.makeText(context, "Data berhasil disimpan", Toast.LENGTH_LONG).show()
-                                        // Reset form completely - always clear nomorInduk and go back to initial state
+                                        // Reset form completely
                                         nomorInduk = ""
                                         nisn = ""
                                         studentName = ""
                                         gender = "laki-laki"
                                         dob = ""
+                                        agama = ""
+                                        namaOrangTua = ""
+                                        alamatSiswa = ""
                                         searchPerformed = false
                                         bukuIndukFile = null
                                         ijazahFile = null
@@ -348,6 +394,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun StudentDataSection(
         studentFound: Boolean,
@@ -359,11 +406,17 @@ class MainActivity : ComponentActivity() {
         onGenderChange: (String) -> Unit,
         dob: String,
         onDobChange: (String) -> Unit,
+        agama: String,
+        onAgamaChange: (String) -> Unit,
+        namaOrangTua: String,
+        onNamaOrangTuaChange: (String) -> Unit,
+        alamatSiswa: String,
+        onAlamatSiswaChange: (String) -> Unit,
         bukuIndukFile: File?,
         onBukuIndukFileChange: (File?) -> Unit,
         ijazahFile: File?,
         onIjazahFileChange: (File?) -> Unit,
-        existingBukuIndukUrl: String, // Add these parameters
+        existingBukuIndukUrl: String,
         existingIjazahUrl: String,
         showBukuIndukPreview: Boolean,
         onBukuIndukPreviewClick: () -> Unit,
@@ -376,6 +429,8 @@ class MainActivity : ComponentActivity() {
     ) {
         val context = LocalContext.current
         val fieldsEnabled = !studentFound
+        val agamaOptions = listOf("Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu")
+        var expandedAgama by remember { mutableStateOf(false) }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -419,7 +474,16 @@ class MainActivity : ComponentActivity() {
                     OutlinedTextField(
                         value = studentName,
                         onValueChange = onStudentNameChange,
-                        label = { Text("Nama Siswa") },
+                        label = {
+                            Text(
+                                buildAnnotatedString {
+                                    append("Nama Siswa")
+                                    withStyle(style = SpanStyle(color = Color.Red)) {
+                                        append(" *")
+                                    }
+                                }
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = fieldsEnabled,
                         placeholder = { Text("Nama lengkap siswa") }
@@ -428,7 +492,12 @@ class MainActivity : ComponentActivity() {
                     // Gender radio
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "Jenis Kelamin:",
+                            buildAnnotatedString {
+                                append("Jenis Kelamin")
+                                withStyle(style = SpanStyle(color = Color.Red)) {
+                                    append(" *")
+                                }
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (fieldsEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -438,7 +507,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // DOB picker - Display only date, not datetime
+                    // DOB picker
                     OutlinedButton(
                         onClick = {
                             if (fieldsEnabled) {
@@ -459,8 +528,73 @@ class MainActivity : ComponentActivity() {
                         enabled = fieldsEnabled,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (dob.isBlank()) "Pilih Tanggal Lahir" else "Lahir: $dob")
+                        Text(if (dob.isBlank()) "Pilih Tanggal Lahir *" else "Lahir: $dob")
                     }
+
+                    // Agama Dropdown
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        ExposedDropdownMenuBox(
+                            expanded = expandedAgama,
+                            onExpandedChange = {
+                                if (fieldsEnabled) {
+                                    expandedAgama = !expandedAgama
+                                }
+                            }
+                        ) {
+                            OutlinedTextField(
+                                value = agama,
+                                onValueChange = {},
+                                label = { Text("Agama") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(),
+                                enabled = fieldsEnabled,
+                                placeholder = { Text("Pilih agama") },
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedAgama)
+                                }
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedAgama,
+                                onDismissRequest = { expandedAgama = false }
+                            ) {
+                                agamaOptions.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(option) },
+                                        onClick = {
+                                            onAgamaChange(option)
+                                            expandedAgama = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Nama Orang Tua
+                    OutlinedTextField(
+                        value = namaOrangTua,
+                        onValueChange = onNamaOrangTuaChange,
+                        label = { Text("Nama Orang Tua") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = fieldsEnabled,
+                        placeholder = { Text("Nama lengkap orang tua") }
+                    )
+
+                    // Alamat Siswa with more rows
+                    OutlinedTextField(
+                        value = alamatSiswa,
+                        onValueChange = onAlamatSiswaChange,
+                        label = { Text("Alamat Siswa") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        enabled = fieldsEnabled,
+                        placeholder = { Text("Alamat lengkap siswa") },
+                        singleLine = false,
+                        maxLines = 4
+                    )
                 }
 
                 HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
@@ -470,7 +604,7 @@ class MainActivity : ComponentActivity() {
                     ScanSection(
                         title = "Scan Buku Induk",
                         file = bukuIndukFile,
-                        existingFileUrl = existingBukuIndukUrl, // Pass existing URL
+                        existingFileUrl = existingBukuIndukUrl,
                         onFileScanned = onBukuIndukFileChange,
                         showPreview = showBukuIndukPreview,
                         onPreviewClick = onBukuIndukPreviewClick,
@@ -482,7 +616,7 @@ class MainActivity : ComponentActivity() {
                     ScanSection(
                         title = "Scan Ijazah",
                         file = ijazahFile,
-                        existingFileUrl = existingIjazahUrl, // Pass existing URL
+                        existingFileUrl = existingIjazahUrl,
                         onFileScanned = onIjazahFileChange,
                         showPreview = showIjazahPreview,
                         onPreviewClick = onIjazahPreviewClick,
@@ -494,7 +628,7 @@ class MainActivity : ComponentActivity() {
 
                 HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
 
-                // Save Button - Made different with gap below
+                // Save Button
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -530,7 +664,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Added gap below Simpan button
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
@@ -556,7 +689,7 @@ class MainActivity : ComponentActivity() {
     fun ScanSection(
         title: String,
         file: File?,
-        existingFileUrl: String, // Add this parameter
+        existingFileUrl: String,
         onFileScanned: (File?) -> Unit,
         showPreview: Boolean,
         onPreviewClick: () -> Unit,
@@ -598,7 +731,6 @@ class MainActivity : ComponentActivity() {
         // Function to open PDF
         fun openPdf(pdfFile: File?) {
             if (pdfFile != null && pdfFile.exists()) {
-                // Open local file
                 val uri = androidx.core.content.FileProvider.getUriForFile(
                     context,
                     "${context.packageName}.provider",
@@ -641,7 +773,6 @@ class MainActivity : ComponentActivity() {
             ) {
                 when {
                     file != null -> {
-                        // Local scanned file exists
                         Button(
                             onClick = { openPdf(file) },
                             modifier = Modifier.weight(1f),
@@ -669,7 +800,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     existingFileUrl.isNotBlank() -> {
-                        // Existing file URL from backend exists
                         Button(
                             onClick = { openUrl(existingFileUrl) },
                             modifier = Modifier.weight(1f),
@@ -696,7 +826,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     else -> {
-                        // No file exists
                         Button(
                             onClick = {
                                 GmsDocumentScanning.getClient(options).getStartScanIntent(activity)
@@ -773,6 +902,9 @@ class MainActivity : ComponentActivity() {
         studentName: String,
         gender: String,
         dob: String,
+        agama: String,
+        namaOrangTua: String,
+        alamatSiswa: String,
         bukuIndukFile: File?,
         ijazahFile: File?,
         studentFound: Boolean,
@@ -788,7 +920,10 @@ class MainActivity : ComponentActivity() {
                 put("nisn", nisn)
                 put("student_name", studentName)
                 put("gender", gender)
-                put("dob", dob) // This is already in yyyy-MM-dd format
+                put("dob", dob)
+                put("agama", agama)
+                put("nama_orang_tua", namaOrangTua)
+                put("alamat_siswa", alamatSiswa)
 
                 if (bukuIndukFile != null) {
                     val b64 = Base64.encodeToString(bukuIndukFile.readBytes(), Base64.NO_WRAP)
